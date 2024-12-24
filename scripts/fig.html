@@ -1,0 +1,109 @@
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import numpy as np
+
+# Read the Excel file
+df = pd.read_excel('Week2_challenge_data_source.xlsx')
+
+# Create a dashboard using plotly
+# Create subplots
+fig = make_subplots(
+    rows=3, cols=2,
+    subplot_titles=(
+        'Download vs Upload Throughput',
+        'RTT Distribution',
+        'Session Duration Distribution',
+        'TCP Retransmission Volume',
+        'Download Speed Categories',
+        'Upload Speed Categories'
+    )
+)
+
+# 1. Scatter plot: Download vs Upload Throughput
+fig.add_trace(
+    go.Scatter(
+        x=df['Avg Bearer TP DL (kbps)'],
+        y=df['Avg Bearer TP UL (kbps)'],
+        mode='markers',
+        marker=dict(size=5, opacity=0.5),
+        name='Throughput'
+    ),
+    row=1, col=1
+)
+
+# 2. Box plot: RTT Distribution
+fig.add_trace(
+    go.Box(y=df['Avg RTT DL (ms)'], name='Download RTT'),
+    row=1, col=2
+)
+fig.add_trace(
+    go.Box(y=df['Avg RTT UL (ms)'], name='Upload RTT'),
+    row=1, col=2
+)
+
+# 3. Histogram: Session Duration
+fig.add_trace(
+    go.Histogram(x=df['Dur. (ms)'], name='Duration'),
+    row=2, col=1
+)
+
+# 4. Bar plot: TCP Retransmission
+retrans_data = pd.DataFrame({
+    'Direction': ['Download', 'Upload'],
+    'Average': [
+        df['TCP DL Retrans. Vol (Bytes)'].mean(),
+        df['TCP UL Retrans. Vol (Bytes)'].mean()
+    ]
+})
+fig.add_trace(
+    go.Bar(
+        x=retrans_data['Direction'],
+        y=retrans_data['Average'],
+        name='TCP Retransmission'
+    ),
+    row=2, col=2
+)
+
+# 5. Download Speed Categories
+dl_categories = [
+    'DL TP < 50 Kbps (%)',
+    '50 Kbps < DL TP < 250 Kbps (%)',
+    '250 Kbps < DL TP < 1 Mbps (%)',
+    'DL TP > 1 Mbps (%)'
+]
+dl_avg = df[dl_categories].mean()
+fig.add_trace(
+    go.Pie(
+        labels=dl_categories,
+        values=dl_avg,
+        name='Download Categories'
+    ),
+    row=3, col=1
+)
+
+# 6. Upload Speed Categories
+ul_categories = [
+    'UL TP < 10 Kbps (%)',
+    '10 Kbps < UL TP < 50 Kbps (%)',
+    '50 Kbps < UL TP < 300 Kbps (%)',
+    'UL TP > 300 Kbps (%)'
+]
+ul_avg = df[ul_categories].mean()
+fig.add_trace(
+    go.Pie(
+        labels=ul_categories,
+        values=ul_avg,
+        name='Upload Categories'
+    ),
+    row=3, col=2
+)
+
+# Update layout
+fig.update_layout(
+    height=1200,
+    width=1000,
+    showlegend=True,
+    title_text="Network Performance Dashboard"
+)

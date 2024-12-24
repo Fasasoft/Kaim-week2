@@ -1,0 +1,10 @@
+SELECT
+    customer_id AS MSISDN,
+    AVG(TCP_retransmission) AS avg_tcp_retransmission,
+    AVG(RTT) AS avg_rtt,
+    handset_type,
+    AVG(throughput) AS avg_throughput
+FROM
+    user_network_data  -- Replace with the actual table name
+GROUP BY
+    customer_id, handset_type;

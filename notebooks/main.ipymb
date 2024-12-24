@@ -1,0 +1,126 @@
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+
+# Database connection setup
+import mysql.connector
+
+# Database connection function
+def connect_to_database(host, user, password, database):
+    connection = mysql.connector.connect(
+        host=host,
+        user=user,
+        password=password,
+        database=database
+    )
+    return connection
+
+# Load data from SQL
+def load_data(query, connection):
+    return pd.read_sql(query, connection)
+
+# Handle missing values and outliers
+def clean_data(df):
+    # Replace missing values with mean for numerical columns
+    for col in df.select_dtypes(include=[np.number]):
+        df[col].fillna(df[col].mean(), inplace=True)
+    # Replace missing values with mode for categorical columns
+    for col in df.select_dtypes(include=[object]):
+        df[col].fillna(df[col].mode()[0], inplace=True)
+    return df
+
+# EDA: Describe data
+def describe_data(df):
+    print("Data Overview:")
+    print(df.info())
+    print("\nDescriptive Statistics:")
+    print(df.describe())
+
+# Univariate Analysis: Visualize distributions
+def univariate_analysis(df):
+    for col in df.select_dtypes(include=[np.number]):
+        plt.figure(figsize=(10, 6))
+        sns.histplot(df[col], kde=True, bins=30)
+        plt.title(f"Distribution of {col}")
+        plt.show()
+
+# Bivariate Analysis: Correlation heatmap
+def bivariate_analysis(df, columns):
+    plt.figure(figsize=(12, 8))
+    correlation_matrix = df[columns].corr()
+    sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm")
+    plt.title("Correlation Matrix")
+    plt.show()
+
+# Clustering: K-means
+def perform_clustering(df, columns, k):
+    scaler = MinMaxScaler()
+    normalized_data = scaler.fit_transform(df[columns])
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    df['Cluster'] = kmeans.fit_predict(normalized_data)
+    return df, kmeans
+
+# Dimensionality Reduction: PCA
+def perform_pca(df, columns, n_components=2):
+    scaler = MinMaxScaler()
+    normalized_data = scaler.fit_transform(df[columns])
+    pca = PCA(n_components=n_components)
+    principal_components = pca.fit_transform(normalized_data)
+    return principal_components, pca
+
+# Main script
+if __name__ == "__main__":
+    # Database connection parameters
+    db_host = "localhost"
+    db_user = "postgres"
+    db_password = "02022046"
+    db_name = "telecom"
+
+    # Connect to the database
+    conn = connect_to_database(db_host, db_user, db_password, db_name)
+
+    # SQL query to fetch data (update this query based on your table)
+    query = """
+    SELECT * FROM user_behavior;  
+
+    # Load data
+    data = load_data(query, conn)
+
+    # Close the connection
+    conn.close()
+
+    # Clean the data
+    cleaned_data = clean_data(data)
+
+    # Describe the data
+    describe_data(cleaned_data)
+
+    # Univariate Analysis
+    univariate_analysis(cleaned_data)
+
+    # Bivariate Analysis
+    bivariate_analysis(cleaned_data, ["DL_data", "UL_data", "Session_duration"])
+
+    # Perform Clustering
+    clustered_data, kmeans = perform_clustering(cleaned_data, ["DL_data", "UL_data", "Session_duration"], k=3)
+    print("Cluster Centers:\n", kmeans.cluster_centers_)
+
+    # Perform PCA
+    pca_result, pca_model = perform_pca(cleaned_data, ["DL_data", "UL_data", "Session_duration"])
+    print("Explained Variance Ratio:\n", pca_model.explained_variance_ratio_)
+
+    # Visualize PCA results
+    plt.figure(figsize=(10, 6))
+    plt.scatter(pca_result[:, 0], pca_result[:, 1], c=clustered_data['Cluster'], cmap="viridis", alpha=0.7)
+    plt.title("PCA Scatter Plot")
+    plt.xlabel("Principal Component 1")
+    plt.ylabel("Principal Component 2")
+    plt.colorbar(label="Cluster")
+    plt.show()
